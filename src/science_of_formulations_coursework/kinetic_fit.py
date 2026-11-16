@@ -28,3 +28,17 @@ A, B = potp
 
 print(f"A = {A:.4e}")
 print(f"B = {B:.4f}")
+
+# Calculate predicted values using fitted parameters
+G_pred = growth_model(S, k1, k2)
+J_pred = nucleation_model(S, A, B)
+
+# Calculate R-squared for growth model
+R2_growth = 1 - np.sum((G - G_pred)**2) / np.sum((G - np.mean(G))**2)
+
+# Calculate R-squared for nucleation model
+R2_nucleation = 1 - np.sum((J - J_pred)**2) / np.sum((J - np.mean(J))**2)
+
+# Print results
+print(f"Growth model R² = {R2_growth:.4f}")
+print(f"Nucleation model R² = {R2_nucleation:.4f}")
