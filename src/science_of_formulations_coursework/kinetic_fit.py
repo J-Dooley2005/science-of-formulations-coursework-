@@ -1,6 +1,7 @@
 import pandas as pd
-import numpy as np 
+import numpy as np
 from scipy.optimize import curve_fit
+import matplotlib.pyplot as plt
 
 data = pd.read_csv("KineticData.csv")
 
@@ -8,6 +9,7 @@ data = pd.read_csv("KineticData.csv")
 S = data['Supersaturation [-]']
 G = data['Growth rate [μm s^{-1}]']
 J = data['Nucleation rate [s^{-1} kg^{-1}]']
+
 
 # Growth model function
 def growth_model(S, k1, k2):
@@ -29,16 +31,35 @@ A, B = potp
 print(f"A = {A:.4e}")
 print(f"B = {B:.4f}")
 
-# Calculate predicted values using fitted parameters
-G_pred = growth_model(S, k1, k2)
-J_pred = nucleation_model(S, A, B)
+# create graphs for nucleation rate and growth rate
 
-# Calculate R-squared for growth model
-R2_growth = 1 - np.sum((G - G_pred)**2) / np.sum((G - np.mean(G))**2)
+S_fit = np.linspace(S.min(), S.max(), 200)
 
-# Calculate R-squared for nucleation model
-R2_nucleation = 1 - np.sum((J - J_pred)**2) / np.sum((J - np.mean(J))**2)
+# calculate model predictions
+G_fit = growth_model(S_fit, k1, k2)
+J_fit = nucleation_model(S_fit, A, B)
 
-# Print results
-print(f"Growth model R² = {R2_growth:.4f}")
-print(f"Nucleation model R² = {R2_nucleation:.4f}")
+#Growth rate plot
+plt.figure(figsize=(8,5))
+plt.plot(S_fit, G_fit, color='red', label='Fitted model')
+
+plt.xlabel('Supersaturation, S')
+plt.ylabel('Growth rate (μm s^{-1} )')
+plt.title('Growth rate vs Supersaturation')
+plt.legend()
+plt.grid(True)
+
+plt.show()
+
+# nucleation rate plot
+plt.figure(figsize=(8,5))
+plt.plot(S_fit, J_fit, color='red', label='Fitted model')
+
+plt.yscale('log')  # Important for nucleation data
+
+plt.xlabel('Supersaturation, S')
+plt.ylabel('Nucleation Rate (s⁻¹ kg⁻¹)')
+plt.title('Nucleation Rate vs Supersaturation')
+plt.legend()
+plt.grid(True)
+plt.show()
