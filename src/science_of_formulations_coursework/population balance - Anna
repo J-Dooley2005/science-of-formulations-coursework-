@@ -1,0 +1,146 @@
+import numpy as np
+from scipy.integrate import solve_ivp
+import matplotlib.pyplot as plt
+
+# Import initial conditions
+from initial_conditions import (
+    c0, T0, L, dL, N0, rho_c, kv, m0)
+
+# Import kinetic model
+from kinetic_fit import (growth_model, nucleation_model, k1, k2, A, B
+)
+
+# PBE model
+
+def pbe_model(N, G, J, dL):
+    n_bins = len(N)
+    F = np.zeros(n_bins + 1)
+
+    #nucleation at the lower size boundary
+    F[0] = J
+
+    # growth between size bins
+    F[1:n_bins] = G * N[:-1] / dL
+
+    # Outflow at uper crystal size
+    F[n_bins] = G * N[-1] / dL
+
+    return F[:-1] - F[1:]
+
+# Liquid phase mass balance
+def liquid_mass_balance(N, L, dL, G):
+    dc_dt = -3 * rho_c * kv * G * np.sum(L**2*N) * dL
+    return dc_dt
+
+# temperature profile
+def temperature_profile(t):
+    T = T0
+    return T
+
+# combined crystallisation model
+
+def crystallisation_model(t, y):
+    # extract crystal population and concentration
+    N = y[:-1]
+    c = y[-1]
+
+    # calculate temperature
+    T = temperature_profile(t)
+
+    # calculation growth and nucleation rates
+    c_sat = 3.37 * np.exp(0.0359 * T)
+
+    S = c / c_sat
+
+    G = growth_model(S, k1, k2)
+    J = nucleation_model(S, A, B)
+
+    # calculate population balance
+    dN_dt = pbe_model(N, G, J, dL)
+
+    #calculate liquid mass balance
+    dc_dt = liquid_mass_balance(N, L, dL, G) 
+
+    # combine derivatives
+    dydt = np.concatenate((dN_dt, [dc_dt]))
+
+    return dydt
+
+# initial conditions for ODE solvers
+y0 = np.concatenate((N0, [c0]))
+
+# solve the model
+
+# simulation time
+t_start = 0
+t_end = 86400
+
+# timepoints for output
+time_points = np.linspace(t_start, t_end, 200)
+
+solution = solve_ivp(crystallisation_model, (t_start, t_end), y0, t_eval = time_points)
+
+# extract results
+if not solution.success:
+    raise RuntimeError("ODE solver failed to converge")
+
+N_results = solution.y[:-1,:]
+c_results = solution.y[-1,:]
+
+time_hours = solution.t / 3600
+
+print("Simulation successful:", solution.success)
+print("Initial concentration:", c_results[0], "g/kg")
+print("Final concentration:", c_results[-1], "g/kg")
+
+# calculate solide crystal mass
+solid_mass = rho_c * kv * np.sum(L[:, None]**3 * N_results, axis=0)
+
+# total mass
+total_mass = c_results + solid_mass
+
+print("Initial solid:", solid_mass[0], "g/kg")
+print("Final solid mass:", solid_mass[-1], "g/kg")
+print("Initial total mass:", total_mass[0], "g/kg")
+print("Final total mass:", total_mass[-1], "g/kg")
+
+
+#plot liquid mass balance results
+
+plt.figure(figsize=(8,5))
+
+plt.plot(time_hours, c_results)
+
+plt.xlabel("Time (hours)")
+plt.ylabel("Liquid concentration (g/kg)")
+plt.title("Liquid concentration during cystallisation")
+
+plt.grid()
+plt.tight_layout()
+plt.show()
+
+# plot crystal size distribution results
+plt.figure(figsize=(8, 5))
+selected_times = [0, 50, 100, 150, 199]
+
+for i in selected_times:
+    plt.plot(L, N_results[:,i], label=f"{time_hours[i]:.1f} hours")
+
+plt.xlabel("Crystal length (um)")
+plt.ylabel("Number of crystals in bin")
+plt.title("Crystal size distribution during crystallisation")
+plt.legend()
+plt.grid()
+plt.tight_layout()
+plt.show()
+
+# plot solid mass results
+plt.figure(figsize=(8, 5))
+
+plt.plot(time_hours, solid_mass)
+plt.xlabel("Time (hours)")
+plt.ylabel("Solid crystal mass (g/kg)")
+plt.title("Solid crystal mass during crystallisation")
+plt.grid()
+plt.tight_layout()
+plt.show()

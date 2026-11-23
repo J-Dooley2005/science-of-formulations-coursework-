@@ -3,14 +3,14 @@ import numpy as np
 
 # Initial operating conditions
 c0 = 8          # Initial concentration (g/kg)
-T = 15          # Temperature (degrees C)
+T0 = 15          # Temperature (degrees C)
 
 # Solubility parameters
 a = 3.37
 b = 0.0359
 
 # Calculate solubility
-c_sat = a * np.exp(b * T)
+c_sat = a * np.exp(b * T0)
 
 # Calculate initial supersaturation
 S0 = c0 / c_sat
