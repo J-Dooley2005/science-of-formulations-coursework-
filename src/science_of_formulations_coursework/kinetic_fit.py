@@ -1,3 +1,4 @@
+
 import pandas as pd
 import numpy as np
 from scipy.optimize import curve_fit
@@ -10,13 +11,12 @@ S = data['Supersaturation [-]']
 G = data['Growth rate [μm s^{-1}]']
 J = data['Nucleation rate [s^{-1} kg^{-1}]']
 
-
 # Growth model function
 def growth_model(S, k1, k2):
     return k1 * (S-1)**k2
 
-potp, pcov = curve_fit(growth_model, S, G)
-k1, k2 = potp
+popt, pcov = curve_fit(growth_model, S, G)
+k1, k2 = popt
 
 print(f"k1 = {k1:.4f}")
 print(f"k2 = {k2:.4f}")
@@ -25,41 +25,58 @@ print(f"k2 = {k2:.4f}")
 def nucleation_model(S, A, B):
     return A * np.exp(-B/(np.log(S))**2)
 
-potp, pcov = curve_fit(nucleation_model, S, J)
-A, B = potp
+popt, pcov = curve_fit(nucleation_model, S, J)
+A, B = popt
 
 print(f"A = {A:.4e}")
 print(f"B = {B:.4f}")
 
-# create graphs for nucleation rate and growth rate
+# Calculate predicted values using fitted parameters
+G_pred = growth_model(S, k1, k2)
+J_pred = nucleation_model(S, A, B)
 
+# Calculate R-squared for both models
+R2_growth = 1 - np.sum((G - G_pred)**2) / np.sum((G - np.mean(G))**2)
+R2_nucleation = 1 - np.sum((J - J_pred)**2) / np.sum((J - np.mean(J))**2)
+
+print(f"Growth model R² = {R2_growth:.4f}")
+print(f"Nucleation model R² = {R2_nucleation:.4f}")
+
+# create graphs for nucleation rate and growth rate
 S_fit = np.linspace(S.min(), S.max(), 200)
 
 # calculate model predictions
 G_fit = growth_model(S_fit, k1, k2)
 J_fit = nucleation_model(S_fit, A, B)
 
-#Growth rate plot
-plt.figure(figsize=(8,5))
-plt.plot(S_fit, G_fit, color='red', label='Fitted model')
+# Growth rate plot
+plt.figure(figsize=(8, 5))
+
+plt.scatter(S, G, color='blue', label='Experimental data')
+plt.plot(S_fit, G_fit, color='red',
+         label=f'Fitted model (R² = {R2_growth:.4f})')
 
 plt.xlabel('Supersaturation, S')
-plt.ylabel('Growth rate (μm s^{-1} )')
-plt.title('Growth rate vs Supersaturation')
+plt.ylabel('Growth rate (μm s⁻¹)')
+plt.title('Growth Rate vs Supersaturation')
 plt.legend()
 plt.grid(True)
-
+plt.tight_layout()
 plt.show()
 
-# nucleation rate plot
-plt.figure(figsize=(8,5))
-plt.plot(S_fit, J_fit, color='red', label='Fitted model')
+# Nucleation rate plot
+plt.figure(figsize=(8, 5))
 
-plt.yscale('log')  # Important for nucleation data
+plt.scatter(S, J, color='blue', label='Experimental data')
+plt.plot(S_fit, J_fit, color='red',
+         label=f'Fitted model (R² = {R2_nucleation:.4f})')
+
+plt.yscale('log')
 
 plt.xlabel('Supersaturation, S')
-plt.ylabel('Nucleation Rate (s⁻¹ kg⁻¹)')
+plt.ylabel('Nucleation rate (s⁻¹ kg⁻¹)')
 plt.title('Nucleation Rate vs Supersaturation')
 plt.legend()
 plt.grid(True)
+plt.tight_layout()
 plt.show()
